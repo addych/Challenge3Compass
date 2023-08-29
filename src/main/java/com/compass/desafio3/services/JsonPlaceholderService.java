@@ -5,12 +5,13 @@ import com.compass.desafio3.model.Comment;
 import com.compass.desafio3.model.History;
 import com.compass.desafio3.model.Post;
 import com.compass.desafio3.repositories.PostRepository;
+import com.compass.desafio3.repositories.HistoryRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Service
 public class JsonPlaceholderService {
@@ -21,22 +22,47 @@ public class JsonPlaceholderService {
 
     private final PostRepository postRepository;
 
+    private final HistoryRepository historyRepository;
 
 
-    public JsonPlaceholderService(RestTemplate restTemplate, PostRepository postRepository) {
+
+    public JsonPlaceholderService(RestTemplate restTemplate, PostRepository postRepository, HistoryRepository historyRepository) {
         this.restTemplate = restTemplate;
         this.postRepository = postRepository;
+        this.historyRepository = historyRepository;
     }
 
-    public void processPost(Long postId) {
+    public void processAndSavePost(Long postId) {
         if (postId >= 1 && postId <= 100 && !postRepository.existsById(postId)) {
             String url = API_URL + "/posts/" + postId;
             Post post = restTemplate.getForObject(url, Post.class);
 
             if (post != null) {
-                post.setStatus(PostStatus.ENABLED); // Set status to enabled
+                post.setStatus(PostStatus.ENABLED);
                 postRepository.save(post);
+                addHistory(post, PostStatus.ENABLED); // Add history
             }
+        }
+    }
+
+    public void disablePost(Long postId) {
+        Optional<Post> optionalPost = postRepository.findByIdAndStatus(postId, PostStatus.ENABLED);
+        if (optionalPost.isPresent()) {
+            Post post = optionalPost.get();
+            post.setStatus(PostStatus.DISABLED);
+            postRepository.save(post);
+            addHistory(post, PostStatus.DISABLED); // Add history
+        }
+    }
+
+    public void reprocessPost(Long postId) {
+        Optional<Post> optionalPost = postRepository.findById(postId);
+        if (optionalPost.isPresent()) {
+            Post post = optionalPost.get();
+            PostStatus newStatus = (post.getStatus() == PostStatus.ENABLED) ? PostStatus.DISABLED : PostStatus.ENABLED;
+            post.setStatus(newStatus);
+            postRepository.save(post);
+            addHistory(post, newStatus); // Add history
         }
     }
 
@@ -46,7 +72,12 @@ public class JsonPlaceholderService {
     }
 
     public List<Post> getEnabledPosts() {
-        return postRepository.findByStatus(PostStatus.ENABLED);
+        List<Post> enabledPosts = postRepository.findByStatus(PostStatus.ENABLED);
+        for (Post post : enabledPosts) {
+            List<History> history = historyRepository.findByPostOrderByDateDesc(post);
+            post.setHistory(history);
+        }
+        return enabledPosts;
     }
 
     private List<Comment> getCommentsForPost(Long postId) {
@@ -55,10 +86,28 @@ public class JsonPlaceholderService {
         return Arrays.asList(comments);
     }
 
-    private List<History> getHistoryForPost(Long postId) {
-        // Implement logic to retrieve history entries for a post
-        // You can use restTemplate to fetch the history from the API
-        // and map it to HistoryEntry objects
-        return new ArrayList<>();
+    public void updatePostStatus(Long postId, PostStatus newStatus) {
+        Optional<Post> optionalPost = postRepository.findById(postId);
+        if (optionalPost.isPresent()) {
+            Post post = optionalPost.get();
+            if (post.getStatus() != newStatus) {
+                post.setStatus(newStatus);
+                postRepository.save(post);
+
+                History historyEntry = new History();
+                historyEntry.setDate(LocalDateTime.now());
+                historyEntry.setStatus(newStatus);
+                historyEntry.setPost(post);
+                historyRepository.save(historyEntry);
+            }
+        }
+    }
+
+    public void addHistory(Post post, PostStatus status) {
+        History history = new History();
+        history.setPost(post);
+        history.setDate(LocalDateTime.now());
+        history.setStatus(status);
+        historyRepository.save(history);
     }
 }

@@ -1,6 +1,8 @@
 package com.compass.desafio3.model;
 
 import com.compass.desafio3.enums.PostStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 
@@ -18,8 +20,8 @@ public class Post {
 
     @OneToMany(mappedBy = "post")
     private List<Comment> comments;
-
-    @OneToMany(mappedBy = "post")
+    @JsonManagedReference
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL)
     private List<History> history;
 
     public Post() {

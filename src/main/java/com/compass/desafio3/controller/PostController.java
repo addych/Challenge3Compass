@@ -27,7 +27,9 @@ public class PostController {
         Post post = jsonPlaceholderService.getPostById(postId);
 
         if (post != null && postId >= 1 && postId <= 100 && !postRepository.existsById(postId)) {
+            post.setStatus(PostStatus.ENABLED);
             postRepository.save(post);
+            jsonPlaceholderService.addHistory(post, PostStatus.ENABLED);
         }
     }
 
@@ -40,6 +42,7 @@ public class PostController {
                 if (post.getStatus() == PostStatus.ENABLED) {
                     post.setStatus(PostStatus.DISABLED);
                     postRepository.save(post);
+                    jsonPlaceholderService.addHistory(post, PostStatus.DISABLED);
                     return ResponseEntity.ok("Post disabled successfully.");
                 } else {
                     return ResponseEntity.badRequest().body("Post is not in ENABLED state.");
@@ -61,6 +64,7 @@ public class PostController {
                 if (post.getStatus() == PostStatus.ENABLED || post.getStatus() == PostStatus.DISABLED) {
                     post.setStatus(post.getStatus() == PostStatus.ENABLED ? PostStatus.DISABLED : PostStatus.ENABLED);
                     postRepository.save(post);
+                    jsonPlaceholderService.addHistory(post, post.getStatus());
                     return ResponseEntity.ok("Post reprocessed successfully.");
                 } else {
                     return ResponseEntity.badRequest().body("Post status is invalid.");
