@@ -1,6 +1,5 @@
 package com.compass.desafio3.controller;
 
-import com.compass.desafio3.model.Comment;
 import com.compass.desafio3.model.Post;
 import com.compass.desafio3.services.CommentService;
 import com.compass.desafio3.services.PostService;

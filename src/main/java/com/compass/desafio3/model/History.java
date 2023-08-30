@@ -3,9 +3,7 @@ package com.compass.desafio3.model;
 import com.compass.desafio3.enums.PostStatus;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Entity
 public class History {

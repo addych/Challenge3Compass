@@ -34,6 +34,7 @@ public class CommentService {
         String url = "https://jsonplaceholder.typicode.com/posts/" + postId + "/comments";
         Comment[] comments = restTemplate.getForObject(url, Comment[].class);
 
+        assert comments != null;
         for (Comment comment : comments) {
             comment.setPost(optionalPost.get());
             commentRepository.save(comment);
@@ -41,10 +42,6 @@ public class CommentService {
 
         return ResponseEntity.ok("Comments fetched and stored successfully.");
     }
-
-
-
-
 
     public List<Comment> getCommentsForPost(Long postId) {
         return commentRepository.findByPostId(postId);
