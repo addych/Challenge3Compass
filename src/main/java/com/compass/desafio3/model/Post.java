@@ -34,6 +34,8 @@ public class Post {
         this.body = body;
     }
 
+    //Getters and setters
+
     public Long getId() {
         return id;
     }
