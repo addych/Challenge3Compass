@@ -1,6 +1,7 @@
 package com.compass.desafio3.controller;
 
 import com.compass.desafio3.enums.PostStatus;
+import com.compass.desafio3.model.Comment;
 import com.compass.desafio3.model.Post;
 import com.compass.desafio3.repositories.PostRepository;
 import org.springframework.http.ResponseEntity;
@@ -75,6 +76,12 @@ public class PostController {
         } else {
             return ResponseEntity.badRequest().body("Invalid postId.");
         }
+    }
+
+    @GetMapping("/{postId}/comments")
+    public ResponseEntity<List<Comment>> getPostComments(@PathVariable Long postId) {
+        List<Comment> comments = jsonPlaceholderService.fetchAndStoreComments(postId);
+        return ResponseEntity.ok(comments);
     }
 
     @GetMapping

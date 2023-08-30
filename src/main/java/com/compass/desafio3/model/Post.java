@@ -18,7 +18,8 @@ public class Post {
     @Enumerated(EnumType.STRING)
     private PostStatus status = PostStatus.ENABLED;
 
-    @OneToMany(mappedBy = "post")
+    @JsonManagedReference
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL)
     private List<Comment> comments;
     @JsonManagedReference
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL)

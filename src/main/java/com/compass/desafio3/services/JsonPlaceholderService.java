@@ -4,11 +4,13 @@ import com.compass.desafio3.enums.PostStatus;
 import com.compass.desafio3.model.Comment;
 import com.compass.desafio3.model.History;
 import com.compass.desafio3.model.Post;
+import com.compass.desafio3.repositories.CommentRepository;
 import com.compass.desafio3.repositories.PostRepository;
 import com.compass.desafio3.repositories.HistoryRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -23,25 +25,55 @@ public class JsonPlaceholderService {
     private final PostRepository postRepository;
 
     private final HistoryRepository historyRepository;
+    private final CommentRepository commentRepository;
+
+    private final WebClient webClient;
 
 
 
-    public JsonPlaceholderService(RestTemplate restTemplate, PostRepository postRepository, HistoryRepository historyRepository) {
+    public JsonPlaceholderService(RestTemplate restTemplate, PostRepository postRepository, HistoryRepository historyRepository, CommentRepository commentRepository, WebClient.Builder webClientBuilder) {
         this.restTemplate = restTemplate;
         this.postRepository = postRepository;
         this.historyRepository = historyRepository;
+        this.commentRepository = commentRepository;
+        this.webClient = webClientBuilder.baseUrl("https://jsonplaceholder.typicode.com").build();
+    }
+
+    public Mono<Post> fetchPostByIdAsync(Long postId) {
+        return webClient.get()
+                .uri("/posts/{postId}", postId)
+                .retrieve()
+                .bodyToMono(Post.class);
+    }
+
+    public List<Comment> fetchAndStoreComments(Long postId) {
+        List<Comment> comments = webClient.get()
+                .uri("/posts/{postId}/comments", postId)
+                .retrieve()
+                .bodyToFlux(Comment.class)
+                .collectList()
+                .block();
+
+        if (comments != null) {
+            for (Comment comment : comments) {
+                comment.setPost(postRepository.findById(postId).get());
+                commentRepository.save(comment);
+            }
+        }
+
+        return comments;
     }
 
     public void processAndSavePost(Long postId) {
         if (postId >= 1 && postId <= 100 && !postRepository.existsById(postId)) {
-            String url = API_URL + "/posts/" + postId;
-            Post post = restTemplate.getForObject(url, Post.class);
-
-            if (post != null) {
-                post.setStatus(PostStatus.ENABLED);
-                postRepository.save(post);
-                addHistory(post, PostStatus.ENABLED); // Add history
-            }
+            fetchPostByIdAsync(postId)
+                    .subscribe(
+                            post -> {
+                                post.setStatus(PostStatus.ENABLED);
+                                postRepository.save(post);
+                                addHistory(post, PostStatus.ENABLED); // Add history
+                            }
+                    );
         }
     }
 
@@ -77,6 +109,11 @@ public class JsonPlaceholderService {
             List<History> history = historyRepository.findByPostOrderByDateDesc(post);
             post.setHistory(history);
         }
+        for (Post post : enabledPosts) {
+            List<Comment> comments = commentRepository.findByPostId(post.getId());
+            post.setComments(comments);
+        }
+
         return enabledPosts;
     }
 
